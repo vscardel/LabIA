@@ -49,23 +49,33 @@ def processa_base(path,heigth,width,dimension,size_of_validation):
 				imagem = cv2.imread(path + '/' + directory + '/' + img,cv2.IMREAD_COLOR)
 				teste[k] = imagem
 				k = k + 1
-	print(treino[245])
 
+	
 	#definindo o numero de imagens para cada classe no vetor de validacao
-	# num_exemplos_por_classe = list(map(lambda i:int(i*size_of_validation),num_exemplos_por_classe))
-	# for classe,i in enumerate(num_exemplos_por_classe):
-	# 	num = 1
-	# 	v = 0
-	# 	for k in range(0,len(treino)):
-	# 		if labels_treino[k] == classe and num <= i:
-	# 			validation[v] = treino[k]
-	# 			labels_validation[v] = classe
-	# 			np.delete(treino,k)
-	# 			np.delete(labels_treino,k)
-	# 			v = v + 1
-	# 			num = num + 1
-	# 		else:
-	# 			break 		
+	num_exemplos_por_classe = list(map(lambda i:int(i*size_of_validation),num_exemplos_por_classe))
+
+	#construindo conjunto de validacao
+	#nao estou conseguindo deletar os elementos
+	cont = 0
+	num = 1
+	v = 0
+	for k in range(0,len(treino)):
+		if cont == len(num_exemplos_por_classe):
+			break
+		if num <= num_exemplos_por_classe[cont]:
+			validation[v] = treino[k]
+			labels_validation[v] = cont
+			elementos_a_retirar.append(k)
+			v = v + 1
+			num = num + 1
+		else:
+			while labels_treino[k] == cont:
+				k = k + 1
+			k = k - 1
+			num = 1
+			cont = cont + 1
+
+	
 
 path = '/home/victor/base'
 bla = processa_base(path,64,64,3,0.2)
