@@ -2,11 +2,6 @@ import os
 import numpy as np
 import cv2
 
-def aplica_peso(n,peso):
-	n = n * peso
-	return int(n)
-
-
 def processa_base(path,heigth,width,dimension,size_of_validation):
 
 	num_treino = 0
@@ -21,13 +16,21 @@ def processa_base(path,heigth,width,dimension,size_of_validation):
 			num_teste = num_teste + len(os.listdir(path + '/' + directory))
 
 	#criando os vetores
-	num_exemplos_por_classe = []
 	treino = np.empty([num_treino,heigth,width,dimension], dtype=np.uint8)
 	teste = np.empty([num_teste,heigth,width,dimension], dtype=np.uint8)
 	labels_treino = np.empty([num_treino], dtype = np.uint8)
-	labels_validation = np.empty([int(num_treino*size_of_validation)], dtype = np.uint8)
-	validation = np.empty([int(num_treino*size_of_validation),heigth,width,dimension],dtype=np.uint8)
 
+	tam_validacao = int(size_of_validation*num_treino)
+	tam_treino_oficial = num_treino - tam_validacao
+
+	validacao = np.empty([tam_validacao,heigth,width,dimension], dtype=np.uint8)
+	labels_validacao = np.empty([tam_validacao],dtype=np.uint8)
+
+	treino_oficial = np.empty([tam_treino_oficial,heigth,width,dimension], dtype=np.uint8)
+	labels_treino_oficial = np.empty([tam_treino_oficial], dtype = np.uint8)
+
+	tam_classes = []
+	
 	#preenchendo os vetores de treino e de teste
 	for directory in os.listdir(path):
 		if directory == 'treino':
@@ -35,7 +38,7 @@ def processa_base(path,heigth,width,dimension,size_of_validation):
 			l = 0
 			for classe,dir_treino in enumerate(os.listdir(path + '/' + directory)):
 				lista_imagens_classe = os.listdir(path + '/' + directory + '/' + dir_treino)
-				num_exemplos_por_classe.append(len(lista_imagens_classe))
+				tam_classes.append(len(lista_imagens_classe))
 				for img in lista_imagens_classe:
 	
 					imagem = cv2.imread(path + '/' + directory + '/' + dir_treino + '/' + img,cv2.IMREAD_COLOR)
@@ -50,32 +53,32 @@ def processa_base(path,heigth,width,dimension,size_of_validation):
 				teste[k] = imagem
 				k = k + 1
 
+	#aplicando os pesos para cada classe
+	tam_classes = map(lambda i: int(i*size_of_validation),tam_classes)
 	
-	#definindo o numero de imagens para cada classe no vetor de validacao
-	num_exemplos_por_classe = list(map(lambda i:int(i*size_of_validation),num_exemplos_por_classe))
-
-	#construindo conjunto de validacao
-	#nao estou conseguindo deletar os elementos
+	#construindo validacao
+	classe_atual = 0
+	tam = 0
+	classe_de_insercao = 0
 	cont = 0
-	num = 1
 	v = 0
-	for k in range(0,len(treino)):
-		if cont == len(num_exemplos_por_classe):
-			break
-		if num <= num_exemplos_por_classe[cont]:
-			validation[v] = treino[k]
-			labels_validation[v] = cont
-			elementos_a_retirar.append(k)
+	j = 0
+	for k in range(len(treino)):
+		if labels_treino[k] != classe_atual:
+			classe_atual = classe_atual + 1
+		if cont < len(tam_classes) and tam > tam_classes[cont] - 1:
+			classe_de_insercao = classe_de_insercao + 1
+			cont = cont + 1	
+			tam = 0
+		if classe_atual == classe_de_insercao:
+			validacao[v] = treino[k]
+			labels_validacao[v] = labels_treino[k]
 			v = v + 1
-			num = num + 1
+			tam = tam + 1
 		else:
-			while labels_treino[k] == cont:
-				k = k + 1
-			k = k - 1
-			num = 1
-			cont = cont + 1
-
-	
+			treino_oficial[j] = treino[k]
+			labels_treino_oficial[j] = labels_treino[k]
+			j = j + 1 
 
 path = '/home/victor/base'
 bla = processa_base(path,64,64,3,0.2)
