@@ -2,12 +2,8 @@ import os
 import numpy as np
 import cv2
 
-def processa_base(path,heigth,width,dimension,size_of_validation):
-
-	num_treino = 0
-	num_teste = 0
-
-	#numero de arquivos no folder de treino e no folder de teste
+def calcula_tamanho_dos_diretorios():
+	global num_treino,num_teste
 	for directory in os.listdir(path):
 		if directory == 'treino':
 			for dir_treino in os.listdir(path + '/' + directory):
@@ -15,37 +11,19 @@ def processa_base(path,heigth,width,dimension,size_of_validation):
 		else:
 			num_teste = num_teste + len(os.listdir(path + '/' + directory))
 
-	#criando os vetores
-	treino = np.empty([num_treino,heigth,width,dimension], dtype=np.uint8)
-	teste = np.empty([num_teste,heigth,width,dimension], dtype=np.uint8)
-	labels_treino = np.empty([num_treino], dtype = np.uint8)
-
-	tam_validacao = int(size_of_validation*num_treino)
-	tam_treino_oficial = num_treino - tam_validacao
-
-	validacao = np.empty([tam_validacao,heigth,width,dimension], dtype=np.uint8)
-	labels_validacao = np.empty([tam_validacao],dtype=np.uint8)
-
-	treino_oficial = np.empty([tam_treino_oficial,heigth,width,dimension], dtype=np.uint8)
-	labels_treino_oficial = np.empty([tam_treino_oficial], dtype = np.uint8)
-
-	tam_classes = []
-	
-	#preenchendo os vetores de treino e de teste
+def preenche_vetores_de_treino_e_teste():
+	global treino,teste,labels_treino,tam_classes
 	for directory in os.listdir(path):
 		if directory == 'treino':
 			k = 0
-			l = 0
 			for classe,dir_treino in enumerate(os.listdir(path + '/' + directory)):
 				lista_imagens_classe = os.listdir(path + '/' + directory + '/' + dir_treino)
 				tam_classes.append(len(lista_imagens_classe))
 				for img in lista_imagens_classe:
-	
 					imagem = cv2.imread(path + '/' + directory + '/' + dir_treino + '/' + img,cv2.IMREAD_COLOR)
 					treino[k] = imagem
-					labels_treino[l] = classe
+					labels_treino[k] = classe
 					k = k + 1
-					l = l + 1
 		else:
 			k = 0
 			for img in os.listdir(path + '/' + directory):
@@ -53,9 +31,9 @@ def processa_base(path,heigth,width,dimension,size_of_validation):
 				teste[k] = imagem
 				k = k + 1
 
-	#aplicando os pesos para cada classe
-	tam_classes = map(lambda i: int(i*size_of_validation),tam_classes)
-	
+def constroi_validacao():
+	global labels_treino,tam_classes,validacao,treino,labels_validacao,labels_treino,treino_oficial,labels_treino_oficial
+
 	#construindo validacao
 	classe_atual = 0
 	tam = 0
@@ -80,5 +58,46 @@ def processa_base(path,heigth,width,dimension,size_of_validation):
 			labels_treino_oficial[j] = labels_treino[k]
 			j = j + 1 
 
+def processa_base():
+
+	global tam_classes
+
+	preenche_vetores_de_treino_e_teste()
+	#aplicando os pesos para cada classe
+	tam_classes = map(lambda i: int(i*size_of_validation),tam_classes)
+	constroi_validacao()
+
+	retorno = {}
+	retorno['treino'] = treino_oficial
+	retorno['labels_treino'] = labels_treino_oficial
+	retorno['teste'] = teste
+	retorno['validacao'] = validacao
+	retorno['labels_validacao'] = labels_validacao
+
+	return retorno
+
+###############GLOBALS#################
+
 path = '/home/victor/base'
-bla = processa_base(path,64,64,3,0.2)
+heigth = 64
+width = 64
+dimension = 3
+size_of_validation = 0.2
+num_treino,num_teste = 0,0
+
+#######################################
+
+calcula_tamanho_dos_diretorios()
+
+treino = np.empty([num_treino,heigth,width,dimension], dtype=np.uint8)
+teste = np.empty([num_teste,heigth,width,dimension], dtype=np.uint8)
+labels_treino = np.empty([num_treino], dtype = np.uint8)
+tam_validacao = int(size_of_validation*num_treino)
+tam_treino_oficial = num_treino - tam_validacao
+validacao = np.empty([tam_validacao,heigth,width,dimension], dtype=np.uint8)
+labels_validacao = np.empty([tam_validacao],dtype=np.uint8)
+treino_oficial = np.empty([tam_treino_oficial,heigth,width,dimension], dtype=np.uint8)
+labels_treino_oficial = np.empty([tam_treino_oficial], dtype = np.uint8)
+tam_classes = []
+
+vetor_de = processa_base()
