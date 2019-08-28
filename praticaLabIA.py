@@ -69,14 +69,16 @@ def gradient_descent_step(imagens,labels,pesos,learning_rate,bias):
 	P = len(imagens)
 	N = len(pesos)
 	der_par_atual = 0
+
 	bias_g = 0
 	gradiente = np.empty([N])
+
 	for j in range(N):
 		for i in range(P):
 			features = np.reshape(imagens[i],-1)
-			der_par_atual += (2.0/P)*(np.dot(features,pesos) + bias - labels[i])*features[j]
+			der_par_atual += (2.0/P)*((np.dot(features,pesos) + bias) - labels[i])*features[j]
 			if j == 0:
-				bias_g += (2.0/P)*(np.dot(features,pesos) + bias - labels[i])
+				bias_g += (2.0/P)*((np.dot(features,pesos) + bias) - labels[i])
 		gradiente[j] = der_par_atual
 
 	bias_update = bias - (learning_rate*bias_g)
@@ -84,7 +86,7 @@ def gradient_descent_step(imagens,labels,pesos,learning_rate,bias):
 
 	return bias_update,pesos_update
 
-def MSE(pesos,labels,batch,bias):
+def MSE(batch,labels,pesos,bias):
 	N = len(batch)
 	erro = 0
 	for cont,img in enumerate(batch):
@@ -94,9 +96,28 @@ def MSE(pesos,labels,batch,bias):
 	erro /= N
 	return erro
 
+def acc(batch,labels,pesos,bias):
+	N = len(batch)
+	classe,acertos = 0,0
+	for cont,img in enumerate(batch):
+		features = np.reshape(img,-1)
+		y_ = np.dot(features,pesos) + bias
+		if y_ <= 0.7:
+			classe = 0 
+		elif y_ > 0.7 and y_ <= 1.4:
+			classe = 1
+		elif y_ > 1.4 and y_ <= 2.1:
+			classe = 2
+		elif y_ > 2.1:
+			classe = 3
+		if classe == labels[cont]:
+			acertos += 1
+
+	acc = float(acertos)/N
+	return acc
 ###############GLOBALS#################
 
-path = '/home/tomas/base'
+path = '/home/victor/base'
 heigth = 64
 width = 64
 dimension = 3
@@ -121,17 +142,24 @@ labels_treino_oficial = np.empty([tam_treino_oficial], dtype = np.uint8)
 
 #############PARAMETROS#################
 
+#1) learning_rate1 = 0.000000000000001 pior q o 2
+#2) learning_rate2 = 0.00000000000001 pior q o 3
+#3) learning_rate = 0.0000000000001
+
 pesos = np.empty([heigth*width*dimension])
-learning_rate = 0.001
+learning_rate = 0.0000000000001
 bias = 0
 batch_size = 20
+num_iteracoes_treino = 20
 
 ########################################
 
 processa_base()
-for i in range(10):
+for i in range(num_iteracoes_treino):
+	print("iteracao" + str(i+1))
+	print
 	lista_indices = np.random.permutation(len(treino_oficial))
 	batch = np.take(treino_oficial,lista_indices[:batch_size],axis=0)
 	labels_batch = np.take(labels_treino_oficial,lista_indices[:batch_size],axis=0)
-	novo_bias,novos_pesos = gradient_descent_step(batch,labels_batch,pesos,learning_rate,bias)
-	print(MSE(novos_pesos,labels_treino_oficial,treino_oficial,novo_bias))
+	bias,pesos = gradient_descent_step(batch,labels_batch,pesos,learning_rate,bias)
+	print(MSE(validacao,labels_validacao,pesos,bias),acc(validacao,labels_validacao,pesos,bias))
