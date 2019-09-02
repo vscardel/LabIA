@@ -154,6 +154,8 @@ num_iteracoes_treino = 20
 
 ########################################
 
+print("processando a base de dados")
+print 
 processa_base()
 for i in range(num_iteracoes_treino):
 	print("iteracao" + str(i+1))
@@ -163,3 +165,4 @@ for i in range(num_iteracoes_treino):
 	labels_batch = np.take(labels_treino_oficial,lista_indices[:batch_size],axis=0)
 	bias,pesos = gradient_descent_step(batch,labels_batch,pesos,learning_rate,bias)
 	print(MSE(validacao,labels_validacao,pesos,bias),acc(validacao,labels_validacao,pesos,bias))
+	print
