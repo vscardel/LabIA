@@ -12,7 +12,7 @@ def calcula_tamanho_dos_diretorios():
 			num_teste = num_teste + len(os.listdir(path + '/' + directory))
 
 def preenche_vetores_de_treino_e_teste():
-	global treino,teste,labels_treino,tam_classes
+	global treino,teste,labels_treino,tam_classes,num_classes
 	for directory in os.listdir(path):
 		if directory == 'treino':
 			k = 0
@@ -22,7 +22,9 @@ def preenche_vetores_de_treino_e_teste():
 				for img in lista_imagens_classe:
 					imagem = cv2.imread(path + '/' + directory + '/' + dir_treino + '/' + img,cv2.IMREAD_COLOR)
 					treino[k] = imagem
-					labels_treino[k] = classe
+					one_hot_encoding = np.zeros([num_classes])
+					one_hot_encoding[classe] = 1
+					labels_treino[k] = one_hot_encoding
 					k = k + 1
 		else:
 			k = 0
@@ -33,7 +35,6 @@ def preenche_vetores_de_treino_e_teste():
 
 def constroi_validacao():
 	global labels_treino,tam_classes,validacao,treino,labels_validacao,labels_treino,treino_oficial,labels_treino_oficial
-
 	#construindo validacao
 	classe_atual = 0
 	tam = 0
@@ -42,7 +43,8 @@ def constroi_validacao():
 	v = 0
 	j = 0
 	for k in range(len(treino)):
-		if labels_treino[k] != classe_atual:
+		indice = np.where(labels_treino[k] == 1)
+		if indice[0][0] != classe_atual:
 			classe_atual = classe_atual + 1
 		if cont < len(tam_classes) and tam > tam_classes[cont] - 1:
 			classe_de_insercao = classe_de_insercao + 1
@@ -69,29 +71,52 @@ def processa_base():
 def sigmoid(x):
 	return 1/(1+np.exp(-x))
 
+def aplica_modelo(imagem,pesos,bias):
+	features = np.reshape(imagem,-1)
+	features *= 1/255
+	y_ = (features @ pesos) + bias
+	y_ = map(sigmoid,y_)
+	return list(y_)
+
 def gradient_descent_step(imagem,label,pesos,learning_rate,bias):
 	global num_features,num_classes
-	tam_gradiente = num_features*num_classes
-	gradiente = np.empty([tam_gradiente])
-	cont = 0
-	der_parcial_atual = 0.0
+	flag_bias = 0
+	gradiente = np.empty([num_features,num_classes])
+	bias_gradiente = np.empty([num_classes])
+	y_ = aplica_modelo(imagem,pesos,bias)
+	features  = np.reshape(imagem,-1)
+	features *= 1/255
 	for i in range(num_features):
 		for j in range(num_classes):
-			features = np.reshape(imagem,-1)
-			y_ = sigmoid(np.dot(features,pesos[j][0])+bias[j])
-			if cont == 0:
-				bias_g = (y_-label)*y_*(1-y_)
-			der_parcial_atual = (y_-label)*y_*(1-y_)*features[i]
-			gradiente[cont] = der_parcial_atual
-			cont = cont + 1
-	bias_update = bias - (learning_rate*bias_g)
-	pesos_update = pesos - (learning_rate*gradiente)
+			gradiente_atual = (y_[j]-label[j])*y_[j]*(1-y_[j])*features[i]
+			gradiente[i][j] = gradiente_atual
+			if not flag_bias:
+				bias_atual = (y_[j]-label[j])*y_[j]*(1-y_[j])
+				bias_gradiente[j] = bias_atual
+		flag_bias = 1
+	novos_pesos = np.reshape(pesos,-1) - learning_rate*np.reshape(gradiente,-1)
+	novo_bias = bias - learning_rate*bias_gradiente
+	novos_pesos = np.reshape(novos_pesos,(num_features,num_classes))
+	return novos_pesos,novo_bias
 
-	return bias_update,pesos_update
-
+def acc(imagens,labels,pesos,bias):
+	global num_classes
+	acertos = 0
+	for cont,img in enumerate(imagens):
+		y_ = aplica_modelo(img,pesos,bias)
+		maior = -1000
+		pos = 0
+		for i in range (len(y_)):
+			if y_[i] > maior:
+				maior = y_[i]
+				pos = i
+		one_hot_encoding = np.zeros([num_classes],dtype = np.uint8)
+		one_hot_encoding[pos] = 1
+		if (np.array_equal(one_hot_encoding,labels[cont])):
+			acertos += 1
+	return (acertos/len(imagens))
 
 ###############GLOBALS#################
-
 path = '/home/tomas/base'
 heigth = 64
 width = 64
@@ -100,33 +125,25 @@ size_of_validation = 0.2
 num_treino,num_teste = 0,0
 num_classes = 4
 num_features = heigth*width*dimension
-
 #######################################
-
 calcula_tamanho_dos_diretorios()
-
 treino = np.empty([num_treino,heigth,width,dimension], dtype=np.float64)
 teste = np.empty([num_teste,heigth,width,dimension], dtype=np.float64)
-labels_treino = np.empty([num_treino], dtype = np.uint8)
+labels_treino = np.empty([num_treino,num_classes], dtype = np.uint8)
 tam_validacao = int(size_of_validation*num_treino)
 tam_treino_oficial = num_treino - tam_validacao
 tam_classes = []
-
 validacao = np.empty([tam_validacao,heigth,width,dimension], dtype=np.float64)
-labels_validacao = np.empty([tam_validacao],dtype=np.uint8)
+labels_validacao = np.empty([tam_validacao,num_classes],dtype=np.uint8)
 treino_oficial = np.empty([tam_treino_oficial,heigth,width,dimension], dtype=np.float64)
-labels_treino_oficial = np.empty([tam_treino_oficial], dtype = np.uint8)
-
+labels_treino_oficial = np.empty([tam_treino_oficial,num_classes], dtype = np.uint8)
 #############PARAMETROS#################
-
-pesos = [ [np.empty([num_features])] for i in range(num_features)]
-bias = [0.0 for i in range(num_features)]
-learning_rate = 0.0000000000001
+pesos = np.zeros([num_features,num_classes])
+bias = np.zeros([num_classes])
+learning_rate = 0.01
 batch_size = 20
-num_iteracoes_treino = 20
-
+num_iteracoes_treino = 10
 ########################################
-
 print("processando a base de dados")
 print() 
 processa_base()
@@ -136,6 +153,8 @@ for i in range(num_iteracoes_treino):
 	lista_indices = np.random.permutation(len(treino_oficial))
 	batch = np.take(treino_oficial,lista_indices[:batch_size],axis=0)
 	labels_batch = np.take(labels_treino_oficial,lista_indices[:batch_size],axis=0)
-	bias,pesos = gradient_descent_step(batch,labels_batch,pesos,learning_rate,bias)
-	print(MSE(validacao,labels_validacao,pesos,bias),acc(validacao,labels_validacao,pesos,bias))
+	for cont,img in enumerate(batch):
+		pesos,bias = gradient_descent_step(img,labels_batch[cont],pesos,learning_rate,bias)
+	print("acuracia da iteracao " + str(i+1) + ': ', end="")
+	print(acc(validacao,labels_validacao,pesos,bias))
 	print()
