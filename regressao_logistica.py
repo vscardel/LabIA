@@ -78,6 +78,17 @@ def aplica_modelo(imagem,pesos,bias):
 	y_ = map(sigmoid,y_)
 	return list(y_)
 
+def one_hot_encode(y_):
+	maior = -1000
+	pos = 0
+	for i in range (len(y_)):
+		if y_[i] > maior:
+			maior = y_[i]
+			pos = i
+	one_hot_encoding = np.zeros([num_classes],dtype = np.uint8)
+	one_hot_encoding[pos] = 1
+	return one_hot_encoding
+
 def gradient_descent_step(imagem,label,pesos,learning_rate,bias):
 	global num_features,num_classes
 	flag_bias = 0
@@ -104,20 +115,14 @@ def acc(imagens,labels,pesos,bias):
 	acertos = 0
 	for cont,img in enumerate(imagens):
 		y_ = aplica_modelo(img,pesos,bias)
-		maior = -1000
-		pos = 0
-		for i in range (len(y_)):
-			if y_[i] > maior:
-				maior = y_[i]
-				pos = i
-		one_hot_encoding = np.zeros([num_classes],dtype = np.uint8)
-		one_hot_encoding[pos] = 1
+		one_hot_encoding = one_hot_encode(y_)
 		if (np.array_equal(one_hot_encoding,labels[cont])):
 			acertos += 1
 	return (acertos/len(imagens))
 
+
 ###############GLOBALS#################
-path = '/home/tomas/base'
+path = '/home/victor/base'
 heigth = 64
 width = 64
 dimension = 3
@@ -140,15 +145,15 @@ labels_treino_oficial = np.empty([tam_treino_oficial,num_classes], dtype = np.ui
 #############PARAMETROS#################
 pesos = np.zeros([num_features,num_classes])
 bias = np.zeros([num_classes])
-learning_rate = 0.01
-batch_size = 20
+learning_rate = 0.001
+batch_size = 100
 num_iteracoes_treino = 10
 ########################################
 print("processando a base de dados")
 print() 
 processa_base()
 for i in range(num_iteracoes_treino):
-	print("iteracao" + str(i+1))
+	print("iteracao " + str(i+1))
 	print()
 	lista_indices = np.random.permutation(len(treino_oficial))
 	batch = np.take(treino_oficial,lista_indices[:batch_size],axis=0)
