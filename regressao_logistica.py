@@ -73,8 +73,9 @@ def sigmoid(x):
 
 def aplica_modelo(features,pesos,bias):
 	y_ = (features @ pesos) + bias
-	y_ = map(sigmoid,y_)
-	return list(y_)
+	for i in range(len(y_)):
+		y_[i] = sigmoid(y_[i])
+	return y_
 
 def one_hot_encode(y_):
 	maior = -1000
@@ -86,6 +87,16 @@ def one_hot_encode(y_):
 	one_hot_encoding = np.zeros([num_classes],dtype = np.uint8)
 	one_hot_encoding[pos] = 1
 	return one_hot_encoding
+
+def inicializa_pesos_bias(pesos,bias):
+	global num_features,num_classes
+	pesos = np.reshape(pesos,-1)
+	for i in range(len(pesos)):
+		pesos[i] = np.random.normal()*0.01
+	for i in range(len(bias)):
+		bias[i] = np.random.normal()*0.01
+	pesos = np.reshape(pesos,(num_features,num_classes))
+	return pesos,bias
 
 def gradient_descent_step(imagens,labels,pesos,learning_rate,bias):
 	global num_features,num_classes
@@ -99,13 +110,12 @@ def gradient_descent_step(imagens,labels,pesos,learning_rate,bias):
 	for k in range(num_features*num_classes):
 		for cont,img in enumerate(imagens):
 		 		features  = np.reshape(img,-1)
-		 		features *= 1/255
+		 		features = (features * 1/255)
 		 		label = labels[cont]
 		 		y_ = aplica_modelo(features,pesos,bias)
 		 		gradiente_atual += (1/N)*((y_[j]-label[j])*y_[j]*(1-y_[j])*features[i])
 		 		if not flag_bias:
 		 			bias_atual += (1/N)*((y_[j]-label[j])*y_[j]*(1-y_[j]))
-
 		j = j + 1
 		if j == num_classes:
 			j = 0
@@ -118,6 +128,7 @@ def gradient_descent_step(imagens,labels,pesos,learning_rate,bias):
 		gradiente_atual = 0.0
 		bias_atual = 0.0
 	print(gradiente)
+	print(bias)
 	novos_pesos = np.reshape(pesos,-1) - learning_rate*gradiente
 	novo_bias = bias - learning_rate*bias_gradiente
 	novos_pesos = np.reshape(novos_pesos,(num_features,num_classes))
@@ -128,7 +139,7 @@ def acc(imagens,labels,pesos,bias):
 	acertos = 0
 	for cont,img in enumerate(imagens):
 		features  = np.reshape(img,-1)
-		features *= 1/255
+		features = (features * 1/255)
 		y_ = aplica_modelo(features,pesos,bias)
 		one_hot_encoding = one_hot_encode(y_)
 		if (np.array_equal(one_hot_encoding,labels[cont])):
@@ -147,23 +158,27 @@ num_classes = 4
 num_features = heigth*width*dimension
 #######################################
 calcula_tamanho_dos_diretorios()
-treino = np.empty([num_treino,heigth,width,dimension], dtype=np.float64)
-teste = np.empty([num_teste,heigth,width,dimension], dtype=np.float64)
+treino = np.empty([num_treino,heigth,width,dimension], dtype=np.uint8)
+teste = np.empty([num_teste,heigth,width,dimension], dtype=np.uint8)
 labels_treino = np.empty([num_treino,num_classes], dtype = np.uint8)
 tam_validacao = int(size_of_validation*num_treino)
 tam_treino_oficial = num_treino - tam_validacao
 tam_classes = []
-validacao = np.empty([tam_validacao,heigth,width,dimension], dtype=np.float64)
+validacao = np.empty([tam_validacao,heigth,width,dimension], dtype=np.uint8)
 labels_validacao = np.empty([tam_validacao,num_classes],dtype=np.uint8)
-treino_oficial = np.empty([tam_treino_oficial,heigth,width,dimension], dtype=np.float64)
+treino_oficial = np.empty([tam_treino_oficial,heigth,width,dimension], dtype=np.uint8)
 labels_treino_oficial = np.empty([tam_treino_oficial,num_classes], dtype = np.uint8)
 #############PARAMETROS#################
-pesos = np.zeros([num_features,num_classes])
-bias = np.zeros([num_classes])
-learning_rate = 0.01
+pesos = np.full((num_features,num_classes),0.0001)
+bias = np.full((num_classes),0.0001)
+pesos_bias = inicializa_pesos_bias(pesos,bias)
+learning_rate = 0.1
 batch_size = 20
 num_iteracoes_treino = 10
 ########################################
+
+
+
 print("processando a base de dados")
 print() 
 processa_base()
@@ -174,7 +189,6 @@ for i in range(num_iteracoes_treino):
 	batch = np.take(treino_oficial,lista_indices[:batch_size],axis=0)
 	labels_batch = np.take(labels_treino_oficial,lista_indices[:batch_size],axis=0)
 	pesos,bias = gradient_descent_step(batch,labels_batch,pesos,learning_rate,bias)
-	print(pesos,bias)
 	print("acuracia da iteracao " + str(i+1) + ': ', end="")
 	print(acc(validacao,labels_validacao,pesos,bias))
 	print()
