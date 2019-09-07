@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import cv2
 
@@ -16,7 +17,9 @@ def preenche_vetores_de_treino_e_teste():
 	for directory in os.listdir(path):
 		if directory == 'treino':
 			k = 0
-			for classe,dir_treino in enumerate(os.listdir(path + '/' + directory)):
+			diretorios = os.listdir(path + '/' + directory)
+			diretorios.sort()
+			for classe,dir_treino in enumerate(diretorios):
 				lista_imagens_classe = os.listdir(path + '/' + directory + '/' + dir_treino)
 				tam_classes.append(len(lista_imagens_classe))
 				for img in lista_imagens_classe:
@@ -151,9 +154,25 @@ def acc(imagens,labels,pesos,bias):
 			acertos += 1
 	return (acertos/len(imagens))
 
+def salva_modelo(nome_modelo,pesos,bias):
+	global num_classes,num_features
+	f = open(nome_modelo,'w')
+	for i in range(num_features):
+		for j in range(num_classes):
+			if j < num_classes-1:
+				f.write(str(pesos[i][j]) + ' ')
+			else:
+				f.write(str(pesos[i][j]) + '\n')
+	f.write('b')
+	for i in range(num_classes):
+		if i < num_classes - 1:
+			f.write(str(bias[i]) + ' ')
+		else:
+			f.write(str(bias[i]) + '\n')
+	f.close()
 
 ###############GLOBALS#################
-path = '/home/victor/base'
+path = '/home/tomas/base'
 heigth = 64
 width = 64
 dimension = 3
@@ -179,11 +198,13 @@ bias = np.full((num_classes),0.0001)
 pesos_bias = inicializa_pesos_bias(pesos,bias)
 learning_rate = 0.00001
 batch_size = 50
-num_iteracoes_treino = 150
+num_iteracoes_treino = 300
 ########################################
 
 print("processando a base de dados")
+
 print() 
+
 processa_base()
 
 for i in range(num_iteracoes_treino):
@@ -196,3 +217,7 @@ for i in range(num_iteracoes_treino):
 	print("acuracia da iteracao " + str(i+1) + ': ', end="")
 	print(acc(validacao,labels_validacao,pesos,bias))
 	print()
+	
+print('salvando modelo')
+salva_modelo('modelo0',pesos,bias)
+print('modelo salvo')
