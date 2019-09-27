@@ -74,23 +74,37 @@ def processa_base():
 def sigmoid(x):
 	return 1/(1+np.exp(-x))
 
-def aplica_modelo(img,pesos,bias):
-	features  = np.reshape(img,-1)
-	features = (features * 1/255)
-	y_ = (features @ pesos) + bias
+def aplica_sigmoide(y_):
 	for i in range(len(y_)):
 		y_[i] = sigmoid(y_[i])
 	return y_
 
+#funcao de debug
+def ve_maior_index(vet):
+	vet = np.reshape(vet,-1)
+	maior = -100000000000000
+	index = 0
+	for cont,i in enumerate(vet):
+		if i > maior:
+			maior = i
+			index = cont
+	return index
+
+def aplica_modelo(img,ppc,psc,bpc,bsc):
+	features  = np.reshape(img,-1)
+	features = (features * 1/255)
+	
+	h_ = (features @ ppc) + bpc
+	h_ = aplica_sigmoide(h_)
+
+	y_ = (h_ @ psc) + bsc
+	y_ = aplica_sigmoide(y_)
+	return y_,h_
+
 def one_hot_encode(y_):
-	maior = -1000
-	pos = 0
-	for i in range (len(y_)):
-		if y_[i] > maior:
-			maior = y_[i]
-			pos = i
-	one_hot_encoding = np.zeros([num_classes],dtype = np.uint8)
-	one_hot_encoding[pos] = 1
+	index = ve_maior_index(y_)
+	one_hot_encoding = np.zeros([len(y_)],dtype = np.uint8)
+	one_hot_encoding[index] = 1
 	return one_hot_encoding
 
 #recebe 'p' se inicializar a primeira camada e 's' se incializar a segunda,
@@ -102,75 +116,104 @@ def inicializa_pesos(camada = ''):
 	num_linhas,num_colunas = 0,0
 
 	if camada == 'p':
-		pesos = np.random.rand(num_features*num_features_segunda_camada)
+		pesos = np.random.normal(size = num_features*num_features_segunda_camada)
 		num_linhas = num_features
 		num_colunas = num_features_segunda_camada
 	elif camada == 's':
-		pesos = np.random.rand(num_features_segunda_camada*num_classes)
+		pesos = np.random.normal(size = num_features_segunda_camada*num_classes)
 		num_linhas = num_features_segunda_camada
 		num_colunas = num_classes
 	elif camada == 'bp':
-		pesos = np.random.rand(num_features_segunda_camada)
+		pesos = np.random.normal(size = num_features_segunda_camada)
 		num_linhas = num_features_segunda_camada
 		num_colunas = 0
 	else:
-		pesos = np.random.rand(num_classes)
+		pesos = np.random.normal(size = num_classes)
 		num_linhas = num_classes
 		num_colunas = 0
 
-	pesos = pesos * 0.01
 	if not num_colunas:
 		return pesos
 	else:
 		return np.reshape(pesos,(num_linhas,num_colunas))
 	return pesos
 
-def gradient_descent_step(imagens,labels,pesos,learning_rate,bias):
-	global num_features,num_classes
-	flag_bias = 0
-	gradiente = np.empty([num_features*num_classes])
-	bias_gradiente = np.empty([num_classes])
-	N = len(imagens) + 1
-	gradiente_atual = 0.0
-	bias_atual = 0.0
-	i,j = 0,0
-	modelos = np.empty([len(imagens),num_classes],dtype = np.float64)
-	vetor_features = np.empty([len(imagens),num_features])
+def gradient_descent_step(imagens,labels,ppc,psc,learning_rate,bpc,bsc):
 
+	global num_features,num_features_segunda_camada,num_classes
+
+	N = len(imagens)
+
+	gradiente_primeira_camada = np.zeros([num_features,num_features_segunda_camada],dtype = np.float64)
+	gradiente_segunda_camada = np.zeros([num_features_segunda_camada,num_classes],dtype = np.float64)
+	gradiente_bias_primeira_camada = np.zeros([num_features_segunda_camada],dtype = np.float64)
+	gradiente_bias_segunda_camada = np.zeros([num_classes],dtype = np.float64)
+
+	y_barras = np.empty([len(imagens),num_classes],dtype = np.float64)
+	vet_feat_img = np.empty([len(imagens),num_features],dtype = np.float64)
+	camadas_meio = np.empty([len(imagens),num_features_segunda_camada],dtype = np.float64)
+	delta_kas = np.empty([len(imagens),num_classes],dtype = np.float64)
+
+	#pre calcula delta_ks, labels, features e resultados do modelo pra cada imagem
 	for cont,img in enumerate(imagens):
-		y_imagem = aplica_modelo(img,pesos,bias)
+
+		y_imagem,cam_meio_img = aplica_modelo(img,ppc,psc,bpc,bsc)
 		f = np.reshape(img,-1)
-		modelos[cont] = y_imagem
-		vetor_features[cont] = f
 
-	for k in range(num_features*num_classes):
-		for cont,img in enumerate(imagens):
-		 		label = labels[cont]
-		 		features = vetor_features[cont]
-		 		y_ = modelos[cont]
-		 		gradiente_atual += (1/N)*((y_[j]-label[j])*y_[j]*(1-y_[j])*features[i])
-		 		if not flag_bias:
-		 			bias_atual += (1/N)*((y_[j]-label[j])*y_[j]*(1-y_[j]))
-		j = j + 1
-		if j == num_classes:
-			j = 0
-			i = i + 1
-			flag_bias = 1
-		gradiente[k] = gradiente_atual
-		if not flag_bias:
-			bias_gradiente[j] = bias_atual
-		gradiente_atual = 0.0
-		bias_atual = 0.0
-	novos_pesos = np.reshape(pesos,-1) - (learning_rate*gradiente)
-	novo_bias = bias - (learning_rate*bias_gradiente)
-	novos_pesos = np.reshape(novos_pesos,(num_features,num_classes))
-	return novos_pesos,novo_bias
+		y_barras[cont] = y_imagem
+		camadas_meio[cont] = cam_meio_img
+		vet_feat_img[cont] = f
 
-def acc(imagens,labels,pesos,bias):
+		#calculando os deltas e os bias da segunda camada
+		delta_kas_atual = np.empty([num_classes],dtype = np.float64)
+
+		for i in range(num_classes):
+
+			y = labels[cont]
+			delta_k = (y_imagem[i]-y[i])*y_imagem[i]*(1-y_imagem[i])
+			gradiente_bias_segunda_camada[i] += (1/N) * delta_k
+			delta_kas_atual[i] = delta_k
+
+		delta_kas[cont] = delta_kas_atual
+
+	#calcula os gradientes
+	for i in range(len(imagens)):
+
+		#calcula os gradientes da segunda camada
+		for j in range(len(camadas_meio[i])):
+			for k in range(num_classes):
+				gradiente_segunda_camada[j][k] += (1/N)*(delta_kas[i][k]*camadas_meio[i][j])
+		#calcula os gradientes da primeira camada
+		for f in range(len(vet_feat_img[i])):
+			delta_j = 0.0
+			for j in range(len(camadas_meio[i])):
+				summ = 0.0
+				#calcula delta_j
+				for k in range(num_classes):
+					summ += delta_kas[i][k]*pesos_segunda_camada[j][k]
+
+				delta_j = camadas_meio[i][j]*(1-camadas_meio[i][j])*summ
+				gradiente_bias_primeira_camada[j] += (1/N) * delta_j
+				gradiente_primeira_camada[f][j] += (1/N)* (delta_j*vet_feat_img[i][f])
+
+	np.reshape(gradiente_primeira_camada,-1)
+	np.reshape(gradiente_segunda_camada,-1)
+	np.reshape(pesos_primeira_camada,-1)
+	np.reshape(pesos_segunda_camada,-1)
+	novos_pesos_primeira_camada = pesos_primeira_camada - (learning_rate*gradiente_primeira_camada)
+	np.reshape(novos_pesos_primeira_camada,(num_features,num_features_segunda_camada))
+	novos_pesos_segunda_camada = pesos_segunda_camada - (learning_rate*gradiente_segunda_camada)
+	np.reshape(novos_pesos_segunda_camada,(num_features_segunda_camada,num_classes))
+	novo_bias_primeira_camada = bias_primeira_camada - (learning_rate*gradiente_bias_primeira_camada)
+	novo_bias_segunda_camada = bias_segunda_camada - (learning_rate*gradiente_bias_segunda_camada)
+
+	return novos_pesos_primeira_camada,novos_pesos_segunda_camada,novo_bias_primeira_camada,novo_bias_segunda_camada
+
+def acc(imagens,labels,ppc,psc,bpc,bsc):
 	global num_classes
 	acertos = 0
 	for cont,img in enumerate(imagens):
-		y_ = aplica_modelo(img,pesos,bias)
+		y_,h_ = aplica_modelo(img,ppc,psc,bpc,bsc)
 		one_hot_encoding = one_hot_encode(y_)
 		if (np.array_equal(one_hot_encoding,labels[cont])):
 			acertos += 1
@@ -194,7 +237,7 @@ def salva_modelo(nome_modelo,pesos,bias):
 	f.close()
 
 ###############GLOBALS#################
-path = '/home/victor/base'
+path = '/home/tomas/base'
 heigth = 64
 width = 64
 dimension = 3
@@ -202,7 +245,7 @@ size_of_validation = 0.2
 num_treino,num_teste = 0,0
 num_classes = 4
 num_features = heigth*width*dimension
-num_features_segunda_camada = 100
+num_features_segunda_camada = 10
 #######################################
 calcula_tamanho_dos_diretorios()
 treino = np.empty([num_treino,heigth,width,dimension], dtype=np.uint8)
@@ -220,8 +263,8 @@ pesos_primeira_camada = inicializa_pesos('p')
 pesos_segunda_camada = inicializa_pesos('s')
 bias_primeira_camada = inicializa_pesos('bp')
 bias_segunda_camada = inicializa_pesos('bs')
-learning_rate = 0.00001
-batch_size = 50
+learning_rate = 0.01
+batch_size = 20
 num_iteracoes_treino = 150
 ########################################
 
@@ -231,16 +274,19 @@ print()
 
 processa_base()
 
-# for i in range(num_iteracoes_treino):
-# 	print("iteracao " + str(i+1))
-# 	print()
-# 	lista_indices = np.random.permutation(len(treino_oficial))
-# 	batch = np.take(treino_oficial,lista_indices[:batch_size],axis=0)
-# 	labels_batch = np.take(labels_treino_oficial,lista_indices[:batch_size],axis=0)
-# 	pesos,bias = gradient_descent_step(batch,labels_batch,pesos,learning_rate,bias)
-# 	print("acuracia da iteracao " + str(i+1) + ': ', end="")
-# 	print(acc(validacao,labels_validacao,pesos,bias))
-# 	print()
+for i in range(num_iteracoes_treino):
+	print("iteracao " + str(i+1))
+	print()
+	lista_indices = np.random.permutation(len(treino_oficial))
+	batch = np.take(treino_oficial,lista_indices[:batch_size],axis=0)
+	labels_batch = np.take(labels_treino_oficial,lista_indices[:batch_size],axis=0)
+	pesos_primeira_camada,pesos_segunda_camada,bias_primeira_camada,bias_segunda_camada = gradient_descent_step(batch,labels_batch,
+	pesos_primeira_camada,pesos_segunda_camada,
+	learning_rate,bias_primeira_camada,bias_segunda_camada)
+	print("acuracia da iteracao " + str(i+1) + ': ', end="")
+	print(acc(validacao,labels_validacao,pesos_primeira_camada,
+	pesos_segunda_camada,bias_primeira_camada,bias_segunda_camada))
+	print()
 	
 # print('salvando modelo')
 # salva_modelo('modelo0',pesos,bias)
