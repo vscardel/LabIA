@@ -116,19 +116,19 @@ def inicializa_pesos(camada = ''):
 	num_linhas,num_colunas = 0,0
 
 	if camada == 'p':
-		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
+		pesos = np.random.normal(loc=0.0,scale=0.01,size = num_features*num_features_segunda_camada)
 		num_linhas = num_features
 		num_colunas = num_features_segunda_camada
 	elif camada == 's':
-		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
+		pesos = np.random.normal(loc=0.0,scale=0.01,size = num_features_segunda_camada*num_classes)
 		num_linhas = num_features_segunda_camada
 		num_colunas = num_classes
 	elif camada == 'bp':
-		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
+		pesos = np.random.normal(loc=0.0,scale=0.01,size = num_features_segunda_camada)
 		num_linhas = num_features_segunda_camada
 		num_colunas = 0
 	else:
-		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
+		pesos = np.random.normal(loc=0.0,scale=0.01,size = num_classes)
 		num_linhas = num_classes
 		num_colunas = 0
 
@@ -154,6 +154,7 @@ def gradient_descent_step(imagens,labels,ppc,psc,learning_rate,bpc,bsc):
 
 		img = imagens[i]
 		y_imagem,cam_meio_img = aplica_modelo(img,ppc,psc,bpc,bsc)
+		
 		features = np.reshape(img,-1)
 
 		delta_kas_atual = np.empty([num_classes],dtype = np.float64)
@@ -183,13 +184,16 @@ def gradient_descent_step(imagens,labels,ppc,psc,learning_rate,bpc,bsc):
 				gradiente_bias_primeira_camada[j] += (1/N) * delta_j
 				gradiente_primeira_camada[f][j] += (1/N)* (delta_j*features[f])
 
+
 	np.reshape(gradiente_primeira_camada,-1)
 	np.reshape(gradiente_segunda_camada,-1)
 	np.reshape(pesos_primeira_camada,-1)
 	np.reshape(pesos_segunda_camada,-1)
 	novos_pesos_primeira_camada = pesos_primeira_camada - (learning_rate*gradiente_primeira_camada)
+	print(learning_rate*gradiente_primeira_camada)
 	np.reshape(novos_pesos_primeira_camada,(num_features,num_features_segunda_camada))
 	novos_pesos_segunda_camada = pesos_segunda_camada - (learning_rate*gradiente_segunda_camada)
+	print(learning_rate*gradiente_segunda_camada)
 	np.reshape(novos_pesos_segunda_camada,(num_features_segunda_camada,num_classes))
 	novo_bias_primeira_camada = bias_primeira_camada - (learning_rate*gradiente_bias_primeira_camada)
 	novo_bias_segunda_camada = bias_segunda_camada - (learning_rate*gradiente_bias_segunda_camada)
@@ -224,7 +228,7 @@ def salva_modelo(nome_modelo,pesos,bias):
 	f.close()
 
 ###############GLOBALS#################
-path = '/home/victor/base'
+path = '/tmp/guest-synwlu/base'
 heigth = 64
 width = 64
 dimension = 3
@@ -232,7 +236,7 @@ size_of_validation = 0.2
 num_treino,num_teste = 0,0
 num_classes = 4
 num_features = heigth*width*dimension
-num_features_segunda_camada = 10
+num_features_segunda_camada = 64
 #######################################
 calcula_tamanho_dos_diretorios()
 treino = np.empty([num_treino,heigth,width,dimension], dtype=np.uint8)
@@ -250,7 +254,7 @@ pesos_primeira_camada = inicializa_pesos('p')
 pesos_segunda_camada = inicializa_pesos('s')
 bias_primeira_camada = inicializa_pesos('bp')
 bias_segunda_camada = inicializa_pesos('bs')
-learning_rate = 0.01
+learning_rate = 0.001
 batch_size = 20
 num_iteracoes_treino = 150
 ########################################
