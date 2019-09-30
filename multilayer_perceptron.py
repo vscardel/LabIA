@@ -116,19 +116,19 @@ def inicializa_pesos(camada = ''):
 	num_linhas,num_colunas = 0,0
 
 	if camada == 'p':
-		pesos = np.random.normal(size = num_features*num_features_segunda_camada)
+		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
 		num_linhas = num_features
 		num_colunas = num_features_segunda_camada
 	elif camada == 's':
-		pesos = np.random.normal(size = num_features_segunda_camada*num_classes)
+		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
 		num_linhas = num_features_segunda_camada
 		num_colunas = num_classes
 	elif camada == 'bp':
-		pesos = np.random.normal(size = num_features_segunda_camada)
+		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
 		num_linhas = num_features_segunda_camada
 		num_colunas = 0
 	else:
-		pesos = np.random.normal(size = num_classes)
+		pesos = np.random.normal(loc=0.0, scale=0.01,size = num_features*num_features_segunda_camada)
 		num_linhas = num_classes
 		num_colunas = 0
 
