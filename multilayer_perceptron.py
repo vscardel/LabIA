@@ -149,52 +149,39 @@ def gradient_descent_step(imagens,labels,ppc,psc,learning_rate,bpc,bsc):
 	gradiente_bias_primeira_camada = np.zeros([num_features_segunda_camada],dtype = np.float64)
 	gradiente_bias_segunda_camada = np.zeros([num_classes],dtype = np.float64)
 
-	y_barras = np.empty([len(imagens),num_classes],dtype = np.float64)
-	vet_feat_img = np.empty([len(imagens),num_features],dtype = np.float64)
-	camadas_meio = np.empty([len(imagens),num_features_segunda_camada],dtype = np.float64)
-	delta_kas = np.empty([len(imagens),num_classes],dtype = np.float64)
-
-	#pre calcula delta_ks, labels, features e resultados do modelo pra cada imagem
-	for cont,img in enumerate(imagens):
-
-		y_imagem,cam_meio_img = aplica_modelo(img,ppc,psc,bpc,bsc)
-		f = np.reshape(img,-1)
-
-		y_barras[cont] = y_imagem
-		camadas_meio[cont] = cam_meio_img
-		vet_feat_img[cont] = f
-
-		#calculando os deltas e os bias da segunda camada
-		delta_kas_atual = np.empty([num_classes],dtype = np.float64)
-
-		for i in range(num_classes):
-
-			y = labels[cont]
-			delta_k = (y_imagem[i]-y[i])*y_imagem[i]*(1-y_imagem[i])
-			gradiente_bias_segunda_camada[i] += (1/N) * delta_k
-			delta_kas_atual[i] = delta_k
-
-		delta_kas[cont] = delta_kas_atual
-
-	#calcula os gradientes
+	
 	for i in range(len(imagens)):
 
+		img = imagens[i]
+		y_imagem,cam_meio_img = aplica_modelo(img,ppc,psc,bpc,bsc)
+		features = np.reshape(img,-1)
+
+		delta_kas_atual = np.empty([num_classes],dtype = np.float64)
+
+		#calcula os delta_kas da imagem atual
+		for j in range(num_classes):
+
+			y = labels[i]
+			delta_k = (y_imagem[j]-y[j])*y_imagem[j]*(1-y_imagem[j])
+			gradiente_bias_segunda_camada[j] += (1/N) * delta_k
+			delta_kas_atual[j] = delta_k
+
 		#calcula os gradientes da segunda camada
-		for j in range(len(camadas_meio[i])):
+		for j in range(len(cam_meio_img)):
 			for k in range(num_classes):
-				gradiente_segunda_camada[j][k] += (1/N)*(delta_kas[i][k]*camadas_meio[i][j])
+				gradiente_segunda_camada[j][k] += (1/N)*(delta_kas_atual[k]*cam_meio_img[j])
 		#calcula os gradientes da primeira camada
-		for f in range(len(vet_feat_img[i])):
+		for f in range(len(features)):
 			delta_j = 0.0
-			for j in range(len(camadas_meio[i])):
+			for j in range(len(cam_meio_img)):
 				summ = 0.0
 				#calcula delta_j
 				for k in range(num_classes):
-					summ += delta_kas[i][k]*pesos_segunda_camada[j][k]
+					summ += delta_kas_atual[k]*pesos_segunda_camada[j][k]
 
-				delta_j = camadas_meio[i][j]*(1-camadas_meio[i][j])*summ
+				delta_j = cam_meio_img[j]*(1-cam_meio_img[j])*summ
 				gradiente_bias_primeira_camada[j] += (1/N) * delta_j
-				gradiente_primeira_camada[f][j] += (1/N)* (delta_j*vet_feat_img[i][f])
+				gradiente_primeira_camada[f][j] += (1/N)* (delta_j*features[f])
 
 	np.reshape(gradiente_primeira_camada,-1)
 	np.reshape(gradiente_segunda_camada,-1)
@@ -237,7 +224,7 @@ def salva_modelo(nome_modelo,pesos,bias):
 	f.close()
 
 ###############GLOBALS#################
-path = '/home/tomas/base'
+path = '/home/victor/base'
 heigth = 64
 width = 64
 dimension = 3
