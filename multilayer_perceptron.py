@@ -190,10 +190,8 @@ def gradient_descent_step(imagens,labels,ppc,psc,learning_rate,bpc,bsc):
 	np.reshape(pesos_primeira_camada,-1)
 	np.reshape(pesos_segunda_camada,-1)
 	novos_pesos_primeira_camada = pesos_primeira_camada - (learning_rate*gradiente_primeira_camada)
-	print(learning_rate*gradiente_primeira_camada)
 	np.reshape(novos_pesos_primeira_camada,(num_features,num_features_segunda_camada))
 	novos_pesos_segunda_camada = pesos_segunda_camada - (learning_rate*gradiente_segunda_camada)
-	print(learning_rate*gradiente_segunda_camada)
 	np.reshape(novos_pesos_segunda_camada,(num_features_segunda_camada,num_classes))
 	novo_bias_primeira_camada = bias_primeira_camada - (learning_rate*gradiente_bias_primeira_camada)
 	novo_bias_segunda_camada = bias_segunda_camada - (learning_rate*gradiente_bias_segunda_camada)
@@ -210,25 +208,46 @@ def acc(imagens,labels,ppc,psc,bpc,bsc):
 			acertos += 1
 	return (acertos/len(imagens))
 
-def salva_modelo(nome_modelo,pesos,bias):
-	global num_classes,num_features
-	f = open(nome_modelo,'w')
+def salva_modelo(ppc,psc,bpc,bsc):
+	global num_classes,num_features,num_features_segunda_camada
+	f1 = open('pesos_prim_camada','w')
+	f2 = open('pesos_seg_camada','w')
+	f3 = open('bias_prim_camada','w')
+	f4 = open('bias_seg_camada','w')
+
+	#salva modelo da primeira camada
 	for i in range(num_features):
+		for j in range(num_features_segunda_camada):
+			if j < num_features_segunda_camada-1:
+				f1.write(str(ppc[i][j]) + ' ')
+			else:
+				f1.write(str(ppc[i][j]) + '\n')
+	#salva modelo da segunda camada
+	for i in range(num_features_segunda_camada):
 		for j in range(num_classes):
 			if j < num_classes-1:
-				f.write(str(pesos[i][j]) + ' ')
+				f2.write(str(psc[i][j]) + ' ')
 			else:
-				f.write(str(pesos[i][j]) + '\n')
-	f.write('b')
+				f2.write(str(psc[i][j]) + '\n')
+	#salva bias da primeira camada
+	for i in range(num_features_segunda_camada):
+		if i < num_features_segunda_camada - 1:
+			f3.write(str(bpc[i]) + ' ')
+		else:
+			f3.write(str(bpc[i]) + '\n')
+	#salva bias da segunda camada
 	for i in range(num_classes):
 		if i < num_classes - 1:
-			f.write(str(bias[i]) + ' ')
+			f4.write(str(bsc[i]) + ' ')
 		else:
-			f.write(str(bias[i]) + '\n')
-	f.close()
+			f4.write(str(bsc[i]) + '\n')
+	f1.close()
+	f2.close()
+	f3.close()
+	f4.close()
 
 ###############GLOBALS#################
-path = '/tmp/guest-synwlu/base'
+path = '/home/tomas/base'
 heigth = 64
 width = 64
 dimension = 3
@@ -236,7 +255,7 @@ size_of_validation = 0.2
 num_treino,num_teste = 0,0
 num_classes = 4
 num_features = heigth*width*dimension
-num_features_segunda_camada = 64
+num_features_segunda_camada = 32
 #######################################
 calcula_tamanho_dos_diretorios()
 treino = np.empty([num_treino,heigth,width,dimension], dtype=np.uint8)
@@ -254,7 +273,7 @@ pesos_primeira_camada = inicializa_pesos('p')
 pesos_segunda_camada = inicializa_pesos('s')
 bias_primeira_camada = inicializa_pesos('bp')
 bias_segunda_camada = inicializa_pesos('bs')
-learning_rate = 0.001
+learning_rate = 0.01
 batch_size = 20
 num_iteracoes_treino = 150
 ########################################
@@ -279,6 +298,6 @@ for i in range(num_iteracoes_treino):
 	pesos_segunda_camada,bias_primeira_camada,bias_segunda_camada))
 	print()
 	
-# print('salvando modelo')
-# salva_modelo('modelo0',pesos,bias)
-# print('modelo salvo')
+print('salvando modelo')
+salva_modelo(pesos_primeira_camada,pesos_segunda_camada,bias_primeira_camada,bias_segunda_camada)
+print('modelo salvo')
