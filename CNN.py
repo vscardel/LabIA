@@ -97,7 +97,7 @@ num_classes = 4
 num_features = heigth*width*channels
 batch_size = 32
 num_iteracoes_treino = 10000
-lr = 0.0001
+lr = 0.001
 #######################################
 calcula_tamanho_dos_diretorios()
 treino = np.empty([num_treino,heigth,width,channels], dtype=np.uint8)
@@ -152,7 +152,7 @@ with graph.as_default():
 					       (2,2),
 					       padding = 'valid')
 
-	cv2 = tf.layers.dropout(cv2,0.15)
+	cv2 = tf.layers.dropout(cv2,0.15, training = training)
 	
 
 	cv3 = tf.compat.v1.layers.conv2d(cv2,
@@ -168,7 +168,7 @@ with graph.as_default():
 					       (2,2),
 					       padding = 'valid')
 
-	cv4 = tf.layers.dropout(cv4,0.15)
+	cv4 = tf.layers.dropout(cv4,0.15, training = training)
 
 	cv5 = tf.compat.v1.layers.conv2d(cv4,
 				         num_filters,
@@ -182,7 +182,7 @@ with graph.as_default():
 					       (2,2),
 					       padding = 'valid')
 
-	cv6 = tf.layers.dropout(cv6,0.15)
+	cv6 = tf.layers.dropout(cv6,0.15, training = training)
 
 
 	cv7 = tf.compat.v1.layers.conv2d(cv6,
@@ -197,30 +197,18 @@ with graph.as_default():
 					       (2,2),
 					       padding = 'valid')
 
-	cv8 = tf.layers.dropout(cv8,0.15)
+	cv8 = tf.layers.dropout(cv8,0.15, training = training)
 
 	#Need to reshape output of cnn for classifier
 	shape = cv8.shape
 	cv8 = tf.reshape(cv8,[-1,shape[1]*shape[2]*shape[3]])
 	#classifier
-	d1 = tf.compat.v1.layers.dense(cv8, 64, activation=tf.nn.relu, name='d1')
-	d1 = tf.layers.dropout(d1,0.5)
+	d1 = tf.compat.v1.layers.dense(cv8, 1024, activation=tf.nn.relu, name='d1')
+	d1 = tf.layers.dropout(d1,0.5, training = training)
 	d2 = tf.compat.v1.layers.dense(d1, 64, activation=tf.nn.relu, name='d2')
-	d2 = tf.layers.dropout(d2,0.5)
-	d3 = tf.compat.v1.layers.dense(d2, 64, activation=tf.nn.relu, name='d3')
-	d3 = tf.layers.dropout(d3,0.5)
-	d4 = tf.compat.v1.layers.dense(d3, 64, activation=tf.nn.relu, name='d4')
-	d4 = tf.layers.dropout(d4,0.5)
-	d5 = tf.compat.v1.layers.dense(d4, 64, activation=tf.nn.relu, name='d5')
-	d5 = tf.layers.dropout(d5,0.4)
-	d6 = tf.compat.v1.layers.dense(d5, 64, activation=tf.nn.relu, name='d6')
-	d6 = tf.layers.dropout(d6,0.3)
-	d7 = tf.compat.v1.layers.dense(d6, 32, activation=tf.nn.relu, name='d7')
-	d7 = tf.layers.dropout(d7,0.2)
-	d8 = tf.compat.v1.layers.dense(d7, 16, activation=tf.nn.relu, name='d8')
-	d8 = tf.layers.dropout(d8,0.2)
+	d2 = tf.layers.dropout(d2,0.2, training = training)
 	
-	output = tf.compat.v1.layers.dense(d8, 4, name='output')
+	output = tf.compat.v1.layers.dense(d2, 4, name='output')
 	#loss
 	loss = tf.compat.v1.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=output)
 
