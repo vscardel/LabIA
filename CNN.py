@@ -137,65 +137,90 @@ with graph.as_default():
 	img = tf.compat.v1.placeholder(tf.float32,shape=(None,heigth,width,channels))
 	labels = tf.compat.v1.placeholder(tf.int64, shape=(None,))
 	learning_rate = tf.compat.v1.placeholder(tf.float32)
+	training = tf.compat.v1.placeholder(tf.bool)
 	#camadas de convolução
 	cv1 = tf.compat.v1.layers.conv2d(img,
-								     num_filters,
-								     (3,3),
-								     (1,1),
-								     padding = 'valid',
-								     activation = tf.nn.relu)
+				     	num_filters,
+				     	(3,3),
+				     	(1,1),
+				     	padding = 'valid',
+				     	activation = tf.nn.relu)
 
+	
 	cv2 = tf.compat.v1.layers.max_pooling2d(cv1,
-										   (2,2),
-										   (2,2),
-										   padding = 'valid')
+					       (2,2),
+					       (2,2),
+					       padding = 'valid')
+
+	cv2 = tf.layers.dropout(cv2,0.15)
+	
 
 	cv3 = tf.compat.v1.layers.conv2d(cv2,
-								     num_filters,
-								     (3,3),
-								     (1,1),
-								     padding = 'valid',
-								     activation = tf.nn.relu)
+				     	 num_filters,
+				     	 (3,3),
+				     	 (1,1),
+				     	 padding = 'valid',
+				     	 activation = tf.nn.relu)
 
+	
 	cv4 = tf.compat.v1.layers.max_pooling2d(cv3,
-										   (2,2),
-										   (2,2),
-										   padding = 'valid')
+					       (2,2),
+					       (2,2),
+					       padding = 'valid')
+
+	cv4 = tf.layers.dropout(cv4,0.15)
 
 	cv5 = tf.compat.v1.layers.conv2d(cv4,
-								     num_filters,
-								     (3,3),
-								     (1,1),
-								     padding = 'valid',
-								     activation = tf.nn.relu)
+				         num_filters,
+				         (3,3),
+				         (1,1),
+				         padding = 'valid',
+				         activation = tf.nn.relu)
 
 	cv6 = tf.compat.v1.layers.max_pooling2d(cv5,
-										   (2,2),
-										   (2,2),
-										   padding = 'valid')
+					       (2,2),
+					       (2,2),
+					       padding = 'valid')
+
+	cv6 = tf.layers.dropout(cv6,0.15)
+
+
 	cv7 = tf.compat.v1.layers.conv2d(cv6,
-								     num_filters,
-								     (3,3),
-								     (1,1),
-								     padding = 'valid',
-								     activation = tf.nn.relu)
+				     	 num_filters,
+				        (3,3),
+				        (1,1),
+				        padding = 'valid',
+				        activation = tf.nn.relu)
 
 	cv8 = tf.compat.v1.layers.max_pooling2d(cv7,
-										   (2,2),
-										   (2,2),
-										   padding = 'valid')
+					       (2,2),
+					       (2,2),
+					       padding = 'valid')
+
+	cv8 = tf.layers.dropout(cv8,0.15)
 
 	#Need to reshape output of cnn for classifier
 	shape = cv8.shape
 	cv8 = tf.reshape(cv8,[-1,shape[1]*shape[2]*shape[3]])
-	#classificador
+	#classifier
 	d1 = tf.compat.v1.layers.dense(cv8, 64, activation=tf.nn.relu, name='d1')
+	d1 = tf.layers.dropout(d1,0.5)
 	d2 = tf.compat.v1.layers.dense(d1, 64, activation=tf.nn.relu, name='d2')
+	d2 = tf.layers.dropout(d2,0.5)
 	d3 = tf.compat.v1.layers.dense(d2, 64, activation=tf.nn.relu, name='d3')
+	d3 = tf.layers.dropout(d3,0.5)
 	d4 = tf.compat.v1.layers.dense(d3, 64, activation=tf.nn.relu, name='d4')
-	d5 = tf.compat.v1.layers.dense(d4, 32, activation=tf.nn.relu, name='d5')
-	d6 = tf.compat.v1.layers.dense(d5, 16, activation=tf.nn.relu, name='d6')
-	output = tf.compat.v1.layers.dense(d6, 4, name='output')
+	d4 = tf.layers.dropout(d4,0.5)
+	d5 = tf.compat.v1.layers.dense(d4, 64, activation=tf.nn.relu, name='d5')
+	d5 = tf.layers.dropout(d5,0.4)
+	d6 = tf.compat.v1.layers.dense(d5, 64, activation=tf.nn.relu, name='d6')
+	d6 = tf.layers.dropout(d6,0.3)
+	d7 = tf.compat.v1.layers.dense(d6, 32, activation=tf.nn.relu, name='d7')
+	d7 = tf.layers.dropout(d7,0.2)
+	d8 = tf.compat.v1.layers.dense(d7, 16, activation=tf.nn.relu, name='d8')
+	d8 = tf.layers.dropout(d8,0.2)
+	
+	output = tf.compat.v1.layers.dense(d8, 4, name='output')
 	#loss
 	loss = tf.compat.v1.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=output)
 
@@ -212,7 +237,7 @@ def accuracy(session, Xi, yi):
 	for i in range(0, len(Xi), batch_size):
 		X_batch = Xi[i:i+batch_size]
 		y_batch = yi[i:i+batch_size]
-		ret = session.run([correct], feed_dict = {img : X_batch, labels : y_batch})
+		ret = session.run([correct], feed_dict = {img : X_batch, labels : y_batch, training : False})
 		cont += ret[0]
 	return 100.0*cont/len(Xi)
 
@@ -226,8 +251,7 @@ with tf.compat.v1.Session(graph = graph) as session:
 		imgs_batch = np.take(treino_oficial, indexes, axis=0)
 		labels_batch = np.take(labels_treino_escalar, indexes, axis=0)
 
-		ret = session.run([train_op], feed_dict = {img : imgs_batch, labels : labels_batch, 
-												   learning_rate : lr})
+		ret = session.run([train_op], feed_dict = {img : imgs_batch, labels : labels_batch, learning_rate : lr, training: True})
 
 		if i%100 == 99:
 			print("Iteration #%d" % (i))
